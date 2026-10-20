@@ -34,6 +34,7 @@ import com.example.uikit.components.MatuleTabBar
 import com.example.uikit.components.MatuleTextField
 import com.example.uikit.theme.MatuleTheme
 
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +43,7 @@ class MainActivity : ComponentActivity() {
             MatuleTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     DemoScreen(modifier = Modifier.padding(innerPadding))
+
                 }
             }
         }
