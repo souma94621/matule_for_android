@@ -37,6 +37,7 @@ android {
 
 dependencies {
     implementation(project(":uikit"))
+    implementation(project(":network"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3)
