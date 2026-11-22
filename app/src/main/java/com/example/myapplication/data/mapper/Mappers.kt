@@ -10,6 +10,11 @@ import com.example.network.model.BannerDto
 import com.example.network.model.CategoryDto
 import com.example.network.model.ProductDto
 import com.example.network.model.UserDto
+import com.example.myapplication.domain.model.Cart
+import com.example.myapplication.domain.model.CartItem
+import com.example.myapplication.domain.model.Project
+import com.example.network.model.ProjectDto
+import com.example.network.model.Cart as NetCart
 
 /** Превращает результат сетевого слоя в результат домена. Единое место (DRY). */
 internal inline fun <T, R> ApiResult<T>.toResource(transform: (T) -> R): Resource<R> =
@@ -34,3 +39,21 @@ internal fun ProductDto.toDomain(imageUrl: String?) = Product(
 
 internal fun BannerDto.toDomain(imageUrl: String?) =
     Banner(id, title, priceLabel, imageUrl, product, sortOrder)
+
+internal fun NetCart.toDomain() = Cart(
+    items = items.map { CartItem(it.id, it.product.toDomain(null), it.quantity) },
+    total = total
+)
+
+internal fun ProjectDto.toDomain(photoUrl: String?) = Project(
+    id = id,
+    title = title,
+    type = type,
+    startDate = startDate,
+    endDate = endDate,
+    recipient = recipient,
+    descriptionSource = descriptionSource,
+    categoryId = category,
+    photoUrl = photoUrl,
+    createdAt = created
+)

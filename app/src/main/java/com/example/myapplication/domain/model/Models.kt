@@ -45,3 +45,38 @@ data class RegistrationData(
     val birthDate: String,
     val gender: String
 )
+
+data class CartItem(val id: String, val product: Product, val quantity: Int)
+
+data class Cart(val items: List<CartItem>, val total: Double)
+
+/** Фото в виде байтов (уже сжатое JPEG). */
+class PhotoData(
+    val bytes: ByteArray,
+    val fileName: String = "photo.jpg",
+    val mimeType: String = "image/jpeg"
+)
+
+data class Project(
+    val id: String,
+    val title: String,
+    val type: String,
+    val startDate: String,
+    val endDate: String,
+    val recipient: String,
+    val descriptionSource: String,
+    val categoryId: String,
+    val photoUrl: String?,
+    val createdAt: String
+)
+
+/** Данные нового проекта (без фото); даты на входе в формате «дд.мм.гггг». */
+data class NewProjectData(
+    val type: String,
+    val title: String,
+    val startDate: String,
+    val endDate: String,
+    val recipient: String,
+    val descriptionSource: String,
+    val categoryId: String
+)

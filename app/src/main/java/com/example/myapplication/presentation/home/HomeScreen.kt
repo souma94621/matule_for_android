@@ -24,11 +24,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.text.HtmlCompat
 import com.example.myapplication.domain.model.Product
+import com.example.myapplication.presentation.common.ProductSheet
 import com.example.uikit.components.MatuleBanner
 import com.example.uikit.components.MatuleBannerGradients
-import com.example.uikit.components.MatuleBottomSheet
 import com.example.uikit.components.MatuleButton
 import com.example.uikit.components.MatuleCard
 import com.example.uikit.components.MatuleChip
@@ -37,9 +36,19 @@ import com.example.uikit.theme.MatuleError
 import com.example.uikit.theme.MatulePrimary
 import com.example.uikit.theme.MatuleTextSecondary
 
-/** Экран «Главная»: поиск, акции, фильтры по категориям и список описаний. */
+/**
+ * Экран «Главная»: поиск, акции, фильтры по категориям и список описаний.
+ *
+ * @param cartProductIds id товаров, которые уже в корзине
+ * @param onToggleCart добавить товар в корзину или убрать (в зависимости от текущего состояния)
+ */
 @Composable
-fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
+fun HomeScreen(
+    viewModel: HomeViewModel,
+    cartProductIds: Set<String>,
+    onToggleCart: (Product) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val state by viewModel.state.collectAsState()
     val current = state
     var selectedProduct by remember { mutableStateOf<Product?>(null) }
@@ -116,7 +125,8 @@ fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
                     title = product.name,
                     category = categoryNames[product.categoryId].orEmpty(),
                     price = "${product.price.toInt()} ₽",
-                    onAddClick = {},
+                    isAdded = product.id in cartProductIds,
+                    onAddClick = { onToggleCart(product) },
                     modifier = Modifier.clickable { selectedProduct = product }
                 )
             }
@@ -124,25 +134,12 @@ fun HomeScreen(viewModel: HomeViewModel, modifier: Modifier = Modifier) {
     }
 
     selectedProduct?.let { product ->
-        // Поле-редактор Pocketbase отдаёт HTML, поэтому убираем теги
-        val description = remember(product.id) {
-            HtmlCompat.fromHtml(product.description, HtmlCompat.FROM_HTML_MODE_COMPACT).toString().trim()
-        }
-        MatuleBottomSheet(
-            onDismiss = { selectedProduct = null },
-            title = product.name
-        ) {
-            Text(text = "Описание", color = MatuleTextSecondary)
-            Text(text = description, modifier = Modifier.padding(top = 8.dp, bottom = 16.dp))
-            if (product.estimatedConsumption.isNotBlank()) {
-                Text(text = "Примерный расход:", color = MatuleTextSecondary)
-                Text(text = product.estimatedConsumption, modifier = Modifier.padding(bottom = 16.dp))
-            }
-            MatuleButton(
-                text = "Добавить за ${product.price.toInt()} ₽",
-                onClick = { selectedProduct = null }
-            )
-        }
+        ProductSheet(
+            product = product,
+            isAdded = product.id in cartProductIds,
+            onToggle = { onToggleCart(product) },
+            onDismiss = { selectedProduct = null }
+        )
     }
 }
 
