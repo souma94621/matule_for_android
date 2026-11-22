@@ -18,6 +18,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.uikit.theme.MatuleBackground
+import com.example.uikit.theme.MatulePrimary
 import com.example.uikit.theme.MatuleTextPrimary
 import com.example.uikit.theme.MatuleTextSecondary
 
@@ -27,9 +28,11 @@ import com.example.uikit.theme.MatuleTextSecondary
  * @param title название товара
  * @param category категория серым цветом под названием
  * @param price цена, уже отформатированная строкой (например «300 ₽»)
- * @param onAddClick вызывается при нажатии на кнопку действия
+ * @param onAddClick вызывается при нажатии на кнопку (добавить или убрать)
  * @param modifier модификатор для внешнего управления размером/отступами
- * @param buttonText текст кнопки (по умолчанию «Добавить»)
+ * @param isAdded если true, показывается кнопка «Убрать» с синей рамкой
+ * @param buttonText текст кнопки в обычном состоянии
+ * @param addedButtonText текст кнопки, когда товар уже добавлен
  */
 @Composable
 fun MatuleCard(
@@ -38,7 +41,9 @@ fun MatuleCard(
     price: String,
     onAddClick: () -> Unit,
     modifier: Modifier = Modifier,
-    buttonText: String = "Добавить"
+    isAdded: Boolean = false,
+    buttonText: String = "Добавить",
+    addedButtonText: String = "Убрать"
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -69,13 +74,24 @@ fun MatuleCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                MatuleButton(
-                    text = buttonText,
-                    onClick = onAddClick,
-                    modifier = Modifier
-                        .width(120.dp)
-                        .height(44.dp)
-                )
+                val buttonModifier = Modifier
+                    .width(120.dp)
+                    .height(44.dp)
+                if (isAdded) {
+                    MatuleOutlinedButton(
+                        text = addedButtonText,
+                        onClick = onAddClick,
+                        modifier = buttonModifier,
+                        borderColor = MatulePrimary,
+                        contentColor = MatulePrimary
+                    )
+                } else {
+                    MatuleButton(
+                        text = buttonText,
+                        onClick = onAddClick,
+                        modifier = buttonModifier
+                    )
+                }
             }
         }
     }
