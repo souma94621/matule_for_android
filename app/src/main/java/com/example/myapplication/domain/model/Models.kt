@@ -80,3 +80,21 @@ data class NewProjectData(
     val descriptionSource: String,
     val categoryId: String
 )
+
+/** Данные главной страницы; fromCache = true, если показаны сохранённые данные из-за отсутствия сети. */
+data class HomeData(
+    val banners: List<Banner>,
+    val categories: List<Category>,
+    val products: List<Product>,
+    val fromCache: Boolean = false
+)
+
+/** Незавершённая регистрация (пароли сюда не попадают). */
+data class RegistrationDraft(
+    val firstName: String = "",
+    val middleName: String = "",
+    val lastName: String = "",
+    val birthDate: String = "",
+    val gender: String? = null,
+    val email: String = ""
+)

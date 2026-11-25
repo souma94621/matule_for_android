@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.myapplication.domain.common.Resource
 import com.example.myapplication.domain.model.RegistrationData
+import com.example.myapplication.domain.model.RegistrationDraft
+import com.example.myapplication.domain.repository.RegistrationDraftRepository
 import com.example.myapplication.domain.usecase.RegisterUseCase
 import com.example.myapplication.domain.validation.PasswordCheck
 import com.example.myapplication.domain.validation.birthDateToIso
@@ -52,14 +54,32 @@ data class RegistrationUiState(
         get() = passwordCheck.isStrong && password == repeatPassword && !isLoading
 }
 
-class RegistrationViewModel(private val register: RegisterUseCase) : ViewModel() {
+class RegistrationViewModel(
+    private val register: RegisterUseCase,
+    private val drafts: RegistrationDraftRepository
+) : ViewModel() {
 
-    private val _state = MutableStateFlow(RegistrationUiState())
+    private val _state = MutableStateFlow(initialState())
     val state: StateFlow<RegistrationUiState> = _state.asStateFlow()
 
-    /** Меняет состояние: viewModel.update { copy(firstName = "...") }. */
+    /** Поля профиля берутся из сохранённого черновика (пароли не сохраняются). */
+    private fun initialState(): RegistrationUiState {
+        val draft = drafts.load()
+        return RegistrationUiState(
+            firstName = draft.firstName,
+            middleName = draft.middleName,
+            lastName = draft.lastName,
+            birthDate = draft.birthDate,
+            gender = draft.gender,
+            email = draft.email
+        )
+    }
+
+    /** Меняет состояние: viewModel.update { copy(firstName = "...") }, и сохраняет черновик. */
     fun update(reducer: RegistrationUiState.() -> RegistrationUiState) {
         _state.update { it.reducer() }
+        val s = _state.value
+        drafts.save(RegistrationDraft(s.firstName, s.middleName, s.lastName, s.birthDate, s.gender, s.email))
     }
 
     fun onSave() {
@@ -76,7 +96,10 @@ class RegistrationViewModel(private val register: RegisterUseCase) : ViewModel()
                 gender = if (s.gender == GENDER_OPTIONS[1]) "female" else "male"
             )
             when (val result = register(data)) {
-                is Resource.Success -> _state.update { it.copy(isLoading = false, isRegistered = true) }
+                is Resource.Success -> {
+                    drafts.clear()
+                    _state.update { it.copy(isLoading = false, isRegistered = true) }
+                }
                 is Resource.Failure -> _state.update { it.copy(isLoading = false, errorMessage = result.message) }
             }
         }

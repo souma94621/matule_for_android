@@ -3,11 +3,13 @@ package com.example.myapplication.presentation.navigation
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.navigation
@@ -42,13 +44,44 @@ fun AppNavigation(container: AppContainer) {
     val navController = rememberNavController()
     val screenModifier = Modifier.systemBarsPadding().imePadding()
 
+    // Запоминаем экраны входа и регистрации, чтобы после перезапуска вернуться на них
+    DisposableEffect(navController) {
+        val listener = NavController.OnDestinationChangedListener { _, destination, _ ->
+            val route = destination.route
+            if (route == Routes.LOGIN || route == Routes.REG_PROFILE || route == Routes.REG_PASSWORD) {
+                container.lastScreenRepository.route = route
+            }
+        }
+        navController.addOnDestinationChangedListener(listener)
+        onDispose { navController.removeOnDestinationChangedListener(listener) }
+    }
+
     NavHost(navController = navController, startDestination = Routes.SPLASH) {
 
         composable(Routes.SPLASH) {
             SplashScreen(
                 onFinished = {
-                    val next = if (container.canLoginWithPin()) Routes.PIN_ENTER else Routes.LOGIN
-                    navController.navigate(next) { popUpTo(Routes.SPLASH) { inclusive = true } }
+                    val loggedIn = container.isLoggedIn()
+                    val hasPin = container.pinRepository.hasPin()
+                    val last = container.lastScreenRepository.route
+                    when {
+                        loggedIn && hasPin -> navController.navigate(Routes.PIN_ENTER) {
+                            popUpTo(Routes.SPLASH) { inclusive = true }
+                        }
+                        loggedIn -> navController.navigate(Routes.PIN_CREATE) {
+                            popUpTo(Routes.SPLASH) { inclusive = true }
+                        }
+                        else -> {
+                            navController.navigate(Routes.LOGIN) {
+                                popUpTo(Routes.SPLASH) { inclusive = true }
+                            }
+                            // Пользователь не закончил регистрацию: возвращаем его на тот же экран
+                            if (last == Routes.REG_PROFILE || last == Routes.REG_PASSWORD) {
+                                navController.navigate(Routes.REG_GRAPH)
+                                if (last == Routes.REG_PASSWORD) navController.navigate(Routes.REG_PASSWORD)
+                            }
+                        }
+                    }
                 }
             )
         }
@@ -74,7 +107,9 @@ fun AppNavigation(container: AppContainer) {
                 val viewModel: RegistrationViewModel = viewModel(
                     viewModelStoreOwner = parent,
                     factory = viewModelFactory {
-                        initializer { RegistrationViewModel(container.registerUseCase) }
+                        initializer {
+                            RegistrationViewModel(container.registerUseCase, container.registrationDraftRepository)
+                        }
                     }
                 )
                 RegistrationProfileScreen(
@@ -88,7 +123,9 @@ fun AppNavigation(container: AppContainer) {
                 val viewModel: RegistrationViewModel = viewModel(
                     viewModelStoreOwner = parent,
                     factory = viewModelFactory {
-                        initializer { RegistrationViewModel(container.registerUseCase) }
+                        initializer {
+                            RegistrationViewModel(container.registerUseCase, container.registrationDraftRepository)
+                        }
                     }
                 )
                 RegistrationPasswordScreen(
