@@ -29,6 +29,7 @@ import com.example.myapplication.presentation.catalog.CatalogScreen
 import com.example.myapplication.presentation.catalog.CatalogViewModel
 import com.example.myapplication.presentation.createproject.CreateProjectScreen
 import com.example.myapplication.presentation.createproject.CreateProjectViewModel
+import com.example.myapplication.presentation.document.PdfViewerScreen
 import com.example.myapplication.presentation.home.HomeScreen
 import com.example.myapplication.presentation.home.HomeViewModel
 import com.example.myapplication.presentation.profile.ProfileScreen
@@ -41,23 +42,30 @@ import com.example.uikit.components.MatuleTabBar
 import com.example.uikit.components.MatuleToast
 import kotlinx.coroutines.delay
 
-/** Основная часть приложения: нижняя панель, вкладки, корзина и создание проекта. */
+/** Что открыто поверх вкладки. Значения сохраняются как «последний экран». */
+private object Overlay {
+    const val NONE = ""
+    const val CART = "cart"
+    const val CREATE_PROJECT = "create_project"
+    const val PRIVACY = "privacy"
+    const val TERMS = "terms"
+}
+
+/** Основная часть приложения: нижняя панель, вкладки, корзина, создание проекта и документы. */
 @Composable
 fun MainScreen(container: AppContainer, onLogout: () -> Unit) {
-    var tab by remember { mutableIntStateOf(0) }
-    var showCart by remember { mutableStateOf(false) }
-    var showCreateProject by remember { mutableStateOf(false) }
+    val lastScreen = container.lastScreenRepository
+    var tab by remember { mutableIntStateOf(lastScreen.tab.coerceIn(0, 3)) }
+    var overlay by remember { mutableStateOf(lastScreen.overlay) }
     var toastMessage by remember { mutableStateOf<String?>(null) }
+
+    // Запоминаем последний экран, чтобы после перезапуска вернуться на него
+    LaunchedEffect(tab) { lastScreen.tab = tab }
+    LaunchedEffect(overlay) { lastScreen.overlay = overlay }
 
     val homeViewModel: HomeViewModel = viewModel(
         factory = viewModelFactory {
-            initializer {
-                HomeViewModel(
-                    container.getBannersUseCase,
-                    container.getCategoriesUseCase,
-                    container.getProductsUseCase
-                )
-            }
+            initializer { HomeViewModel(container.getHomeUseCase, container.getProductsUseCase) }
         }
     )
     val catalogViewModel: CatalogViewModel = viewModel(
@@ -102,7 +110,7 @@ fun MainScreen(container: AppContainer, onLogout: () -> Unit) {
     LaunchedEffect(cart.orderPlaced) {
         if (cart.orderPlaced) {
             cartViewModel.onOrderShown()
-            showCart = false
+            overlay = Overlay.NONE
             tab = 0
             toastMessage = "Заказ успешно оформлен!"
         }
@@ -112,7 +120,7 @@ fun MainScreen(container: AppContainer, onLogout: () -> Unit) {
         if (createState.created) {
             createProjectViewModel.reset()
             projectsViewModel.load()
-            showCreateProject = false
+            overlay = Overlay.NONE
             tab = 2
             toastMessage = "Проект создан"
         }
@@ -124,20 +132,17 @@ fun MainScreen(container: AppContainer, onLogout: () -> Unit) {
             toastMessage = null
         }
     }
-    BackHandler(enabled = showCart || showCreateProject) {
-        showCart = false
-        showCreateProject = false
-    }
+    BackHandler(enabled = overlay != Overlay.NONE) { overlay = Overlay.NONE }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             bottomBar = {
                 Column {
-                    if (cart.items.isNotEmpty() && !showCart && !showCreateProject && (tab == 0 || tab == 1)) {
+                    if (cart.items.isNotEmpty() && overlay == Overlay.NONE && (tab == 0 || tab == 1)) {
                         MatuleButton(
                             text = "Корзина · ${cart.total.toInt()} ₽",
-                            onClick = { showCart = true },
+                            onClick = { overlay = Overlay.CART },
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
@@ -145,8 +150,7 @@ fun MainScreen(container: AppContainer, onLogout: () -> Unit) {
                         selectedIndex = tab,
                         onSelect = {
                             tab = it
-                            showCart = false
-                            showCreateProject = false
+                            overlay = Overlay.NONE
                         }
                     )
                 }
@@ -154,16 +158,28 @@ fun MainScreen(container: AppContainer, onLogout: () -> Unit) {
         ) { innerPadding ->
             val contentModifier = Modifier.padding(innerPadding)
             when {
-                showCart -> CartScreen(
+                overlay == Overlay.CART -> CartScreen(
                     state = cart,
                     onQuantityChange = cartViewModel::changeQuantity,
                     onCheckout = cartViewModel::placeOrder,
-                    onBack = { showCart = false },
+                    onBack = { overlay = Overlay.NONE },
                     modifier = contentModifier
                 )
-                showCreateProject -> CreateProjectScreen(
+                overlay == Overlay.CREATE_PROJECT -> CreateProjectScreen(
                     viewModel = createProjectViewModel,
-                    onBack = { showCreateProject = false },
+                    onBack = { overlay = Overlay.NONE },
+                    modifier = contentModifier
+                )
+                overlay == Overlay.PRIVACY -> PdfViewerScreen(
+                    assetName = "privacy_policy.pdf",
+                    title = "Политика конфиденциальности",
+                    onBack = { overlay = Overlay.NONE },
+                    modifier = contentModifier
+                )
+                overlay == Overlay.TERMS -> PdfViewerScreen(
+                    assetName = "user_agreement.pdf",
+                    title = "Пользовательское соглашение",
+                    onBack = { overlay = Overlay.NONE },
                     modifier = contentModifier
                 )
                 tab == 0 -> HomeScreen(
@@ -180,11 +196,13 @@ fun MainScreen(container: AppContainer, onLogout: () -> Unit) {
                 )
                 tab == 2 -> ProjectsScreen(
                     viewModel = projectsViewModel,
-                    onCreateClick = { showCreateProject = true },
+                    onCreateClick = { overlay = Overlay.CREATE_PROJECT },
                     modifier = contentModifier
                 )
                 tab == 3 -> ProfileScreen(
                     viewModel = profileViewModel,
+                    onOpenPrivacy = { overlay = Overlay.PRIVACY },
+                    onOpenTerms = { overlay = Overlay.TERMS },
                     onLogout = onLogout,
                     modifier = contentModifier
                 )

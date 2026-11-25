@@ -6,8 +6,7 @@ import com.example.myapplication.domain.common.Resource
 import com.example.myapplication.domain.model.Banner
 import com.example.myapplication.domain.model.Category
 import com.example.myapplication.domain.model.Product
-import com.example.myapplication.domain.usecase.GetBannersUseCase
-import com.example.myapplication.domain.usecase.GetCategoriesUseCase
+import com.example.myapplication.domain.usecase.GetHomeUseCase
 import com.example.myapplication.domain.usecase.GetProductsUseCase
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -17,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-/** Всё, что нужно экрану «Главная» для отрисовки. */
+/** Всё, что нужно экрану «Главная» для отрисовки. fromCache: показаны сохранённые данные (нет сети). */
 data class HomeUiState(
     val isLoading: Boolean = true,
     val banners: List<Banner> = emptyList(),
@@ -25,13 +24,13 @@ data class HomeUiState(
     val products: List<Product> = emptyList(),
     val selectedCategoryId: String? = null,
     val query: String = "",
+    val fromCache: Boolean = false,
     val error: String? = null
 )
 
-/** Логика экрана «Главная»: загрузка, фильтр по категории, поиск. */
+/** Логика экрана «Главная»: загрузка (с кэшем), фильтр по категории, поиск. */
 class HomeViewModel(
-    private val getBanners: GetBannersUseCase,
-    private val getCategories: GetCategoriesUseCase,
+    private val getHome: GetHomeUseCase,
     private val getProducts: GetProductsUseCase
 ) : ViewModel() {
 
@@ -48,16 +47,16 @@ class HomeViewModel(
     fun load() {
         viewModelScope.launch {
             _state.value = HomeUiState(isLoading = true)
-            val banners = getBanners()
-            val categories = getCategories()
-            val products = getProducts()
-            _state.value = HomeUiState(
-                isLoading = false,
-                banners = (banners as? Resource.Success)?.data.orEmpty(),
-                categories = (categories as? Resource.Success)?.data.orEmpty(),
-                products = (products as? Resource.Success)?.data.orEmpty(),
-                error = (products as? Resource.Failure)?.message
-            )
+            _state.value = when (val result = getHome()) {
+                is Resource.Success -> HomeUiState(
+                    isLoading = false,
+                    banners = result.data.banners,
+                    categories = result.data.categories,
+                    products = result.data.products,
+                    fromCache = result.data.fromCache
+                )
+                is Resource.Failure -> HomeUiState(isLoading = false, error = result.message)
+            }
         }
     }
 
@@ -67,7 +66,7 @@ class HomeViewModel(
         reloadProducts(withDelay = false)
     }
 
-    /** Ввод в поиск (запрос уходит с небольшой задержкой, чтобы не слать его на каждую букву). */
+    /** Ввод в поиск (запрос уходит с небольшой задержкой). */
     fun onQueryChange(query: String) {
         _state.update { it.copy(query = query) }
         reloadProducts(withDelay = true)
@@ -79,7 +78,8 @@ class HomeViewModel(
             if (withDelay) delay(300)
             val s = _state.value
             when (val result = getProducts(s.selectedCategoryId, s.query.ifBlank { null })) {
-                is Resource.Success -> _state.update { it.copy(products = result.data, error = null) }
+                is Resource.Success ->
+                    _state.update { it.copy(products = result.data, error = null, fromCache = false) }
                 is Resource.Failure -> _state.update { it.copy(error = result.message) }
             }
         }

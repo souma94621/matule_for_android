@@ -29,10 +29,12 @@ import com.example.uikit.theme.MatuleError
 import com.example.uikit.theme.MatulePrimary
 import com.example.uikit.theme.MatuleTextSecondary
 
-/** Экран «Профиль». Пункты «Мои заказы», документы и переключатель уведомлений пока без действий. */
+/** Экран «Профиль». Политика и соглашение открывают просмотр документов. «Мои заказы» и уведомления пока без действий. */
 @Composable
 fun ProfileScreen(
     viewModel: ProfileViewModel,
+    onOpenPrivacy: () -> Unit,
+    onOpenTerms: () -> Unit,
     onLogout: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -81,13 +83,19 @@ fun ProfileScreen(
             text = "Политика конфиденциальности",
             color = MatuleTextSecondary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpenPrivacy)
+                .padding(vertical = 8.dp)
         )
         Text(
             text = "Пользовательское соглашение",
             color = MatuleTextSecondary,
             textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onOpenTerms)
+                .padding(vertical = 8.dp)
         )
         Text(
             text = "Выход",

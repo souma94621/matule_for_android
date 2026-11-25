@@ -82,6 +82,15 @@ fun HomeScreen(
                 )
             }
 
+            if (current.fromCache) {
+                item {
+                    Text(
+                        text = "Нет подключения: показаны сохранённые данные",
+                        color = MatuleTextSecondary
+                    )
+                }
+            }
+
             if (current.banners.isNotEmpty()) {
                 item { SectionTitle("Акции и новости") }
                 item {

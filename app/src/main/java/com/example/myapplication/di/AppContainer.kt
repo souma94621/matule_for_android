@@ -6,13 +6,19 @@ import com.example.myapplication.data.repository.AuthRepositoryImpl
 import com.example.myapplication.data.repository.CartRepositoryImpl
 import com.example.myapplication.data.repository.CatalogRepositoryImpl
 import com.example.myapplication.data.repository.ProjectRepositoryImpl
+import com.example.myapplication.data.storage.LastScreenRepositoryImpl
 import com.example.myapplication.data.storage.PinRepositoryImpl
+import com.example.myapplication.data.storage.PrefsHomeCache
 import com.example.myapplication.data.storage.PrefsSessionStorage
+import com.example.myapplication.data.storage.RegistrationDraftRepositoryImpl
 import com.example.myapplication.domain.repository.AuthRepository
 import com.example.myapplication.domain.repository.CartRepository
 import com.example.myapplication.domain.repository.CatalogRepository
+import com.example.myapplication.domain.repository.HomeCache
+import com.example.myapplication.domain.repository.LastScreenRepository
 import com.example.myapplication.domain.repository.PinRepository
 import com.example.myapplication.domain.repository.ProjectRepository
+import com.example.myapplication.domain.repository.RegistrationDraftRepository
 import com.example.myapplication.domain.repository.ReminderScheduler
 import com.example.myapplication.domain.usecase.AddToCartUseCase
 import com.example.myapplication.domain.usecase.CheckoutUseCase
@@ -20,6 +26,7 @@ import com.example.myapplication.domain.usecase.CreateProjectUseCase
 import com.example.myapplication.domain.usecase.GetBannersUseCase
 import com.example.myapplication.domain.usecase.GetCartUseCase
 import com.example.myapplication.domain.usecase.GetCategoriesUseCase
+import com.example.myapplication.domain.usecase.GetHomeUseCase
 import com.example.myapplication.domain.usecase.GetProductsUseCase
 import com.example.myapplication.domain.usecase.GetProfileUseCase
 import com.example.myapplication.domain.usecase.GetProjectsUseCase
@@ -45,18 +52,22 @@ class AppContainer(context: Context) {
     private val cartRepository: CartRepository = CartRepositoryImpl(network.cart)
     private val projectRepository: ProjectRepository =
         ProjectRepositoryImpl(network.projects, network::fileUrl)
+    private val homeCache: HomeCache = PrefsHomeCache(appContext)
 
     val pinRepository: PinRepository = PinRepositoryImpl(appContext)
     val reminders: ReminderScheduler = AndroidReminderScheduler(appContext)
+    val lastScreenRepository: LastScreenRepository = LastScreenRepositoryImpl(appContext)
+    val registrationDraftRepository: RegistrationDraftRepository = RegistrationDraftRepositoryImpl(appContext)
 
     val loginUseCase = LoginUseCase(authRepository)
     val registerUseCase = RegisterUseCase(authRepository)
     val getProfileUseCase = GetProfileUseCase(authRepository)
-    val logoutUseCase = LogoutUseCase(authRepository, pinRepository, reminders)
+    val logoutUseCase = LogoutUseCase(authRepository, pinRepository, reminders, lastScreenRepository)
 
     val getProductsUseCase = GetProductsUseCase(catalogRepository)
     val getBannersUseCase = GetBannersUseCase(catalogRepository)
     val getCategoriesUseCase = GetCategoriesUseCase(catalogRepository)
+    val getHomeUseCase = GetHomeUseCase(catalogRepository, homeCache)
 
     val getCartUseCase = GetCartUseCase(cartRepository)
     val addToCartUseCase = AddToCartUseCase(cartRepository)
@@ -67,6 +78,6 @@ class AppContainer(context: Context) {
     val getProjectsUseCase = GetProjectsUseCase(projectRepository)
     val createProjectUseCase = CreateProjectUseCase(projectRepository)
 
-    /** true, если пользователь входил раньше и создал PIN: тогда при запуске просим PIN. */
-    fun canLoginWithPin(): Boolean = authRepository.isLoggedIn() && pinRepository.hasPin()
+    /** true, если в сессии есть токен (пользователь входил раньше). */
+    fun isLoggedIn(): Boolean = authRepository.isLoggedIn()
 }
